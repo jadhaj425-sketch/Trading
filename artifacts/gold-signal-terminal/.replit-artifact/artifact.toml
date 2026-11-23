@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Aurum — Gold Market Intelligence"
+description = "A live gold-market dashboard for tracking XAU/USD, reviewing technical-analysis factors, and checking major economic-event risk before any research-only signal."
+version = "1.0.0"
+id = "artifacts/gold-signal-terminal"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19093
+
+[services.development]
+run = "pnpm --filter @workspace/gold-signal-terminal run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/gold-signal-terminal", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/gold-signal-terminal/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19093"
+BASE_PATH = "/"
