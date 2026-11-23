@@ -176,20 +176,41 @@ button:focus-visible, a:focus-visible {
 .prediction-title { display: flex; align-items: center; gap: 12px; }
 .prediction-title h2 { margin: 0; font-size: 16px; }
 .prediction-title p { margin: 4px 0 0; color: #8792a0; font-size: 10px; }
+.prediction-head-actions { display: flex; align-items: center; gap: 9px; }
 .unavailable-badge { color: #e2c36f; border: 1px solid rgba(220,185,96,.34); background: rgba(220,185,96,.08); padding: 7px 9px; font: 10px var(--app-font-mono); letter-spacing: .08em; }
+.available-badge { color: #7fd6bd; border-color: rgba(78,190,160,.3); background: rgba(78,190,160,.08); }
+.refresh-button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(173,185,201,.18); background: rgba(255,255,255,.025); color: #aab4bf; padding: 7px 9px; font: 9px var(--app-font-mono); cursor: pointer; }
+.refresh-button:hover:not(:disabled) { color: #eee5d0; border-color: rgba(220,185,96,.32); }
+.refresh-button:disabled { cursor: wait; opacity: .65; }
+.refresh-button svg { width: 12px; height: 12px; }
+.spinning { animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .prediction-content { padding: 18px 22px 21px; }
 .no-signal {
   padding: 14px 16px; border-left: 2px solid #d9b65e; background: rgba(217,182,94,.055);
   color: #c4c0b6; font-size: 12px; line-height: 1.65;
 }
 .no-signal strong { color: #f0e7d4; }
+.error-signal { border-left-color: #cf706d; background: rgba(207,112,109,.07); }
+.stale-signal { border-left-color: #a68a4e; background: rgba(166,138,78,.08); margin-bottom: 12px; }
+.outlook-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; border: 1px solid rgba(173,185,201,.14); background: rgba(255,255,255,.025); padding: 16px; }
+.outlook-card > div { display: grid; gap: 5px; }
+.outlook-label { color: #8792a0; font: 9px var(--app-font-mono); letter-spacing: .1em; text-transform: uppercase; }
+.outlook-card strong { font-size: 16px; }
+.outlook-bullish { border-left: 2px solid #57b99b; }
+.outlook-bullish strong { color: #8dd8c2; }
+.outlook-bearish { border-left: 2px solid #d77d73; }
+.outlook-bearish strong { color: #e49b91; }
+.outlook-mixed { border-left: 2px solid #d9b65e; }
+.outlook-mixed strong { color: #e4ca84; }
+.outlook-interval { color: #74808c; font-size: 9px; }
+.analysis-metrics { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-top: 12px; }
+.analysis-metric { display: grid; gap: 7px; min-height: 64px; padding: 11px 12px; border: 1px solid rgba(173,185,201,.1); background: rgba(255,255,255,.015); }
+.analysis-metric span { color: #8792a0; font-size: 9px; }
+.analysis-metric strong { color: #e8e1d2; font: 12px var(--app-font-mono); }
+.analysis-metric .metric-positive { color: #8dd8c2; }
+.analysis-metric .metric-negative { color: #e49b91; }
 .factor-heading { display: flex; justify-content: space-between; gap: 12px; margin: 22px 0 11px; color: #8d98a4; font-size: 9px; text-transform: uppercase; letter-spacing: .13em; }
-.factor-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 7px; }
-.factor {
-  display: flex; align-items: center; justify-content: space-between; gap: 7px; min-height: 37px; padding: 8px 10px;
-  border: 1px solid rgba(173,185,201,.1); color: #a6afb8; font-size: 10px; background: rgba(255,255,255,.015);
-}
-.factor span:last-child { color: #6f7a86; font: 8px var(--app-font-mono); text-align: right; white-space: nowrap; }
 .disclaimer { margin: 14px 0 0; color: #687481; font-size: 9px; line-height: 1.6; }
 .footer { display: flex; justify-content: space-between; gap: 16px; margin-top: 17px; color: #67727e; font-size: 9px; }
 .footer .mono { color: #858f9a; }
@@ -219,13 +240,15 @@ button:focus-visible, a:focus-visible {
   .tf-button { min-width: 34px; padding: 7px 6px; }
   .prediction-head { align-items: flex-start; padding: 16px; }
   .prediction-content { padding: 15px; }
-  .factor-grid { grid-template-columns: 1fr; }
+  .analysis-metrics { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .footer { flex-direction: column; }
 }
 @media (max-width: 390px) {
   .brand-caption { display: none; }
   .desk-note { max-width: 90px; }
   .instrument-meta { font-size: 9px; }
+  .prediction-head-actions { flex-direction: column; align-items: flex-end; }
+  .analysis-metrics { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
