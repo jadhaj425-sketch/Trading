@@ -24,6 +24,51 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /gold/candles:
+    get:
+      operationId: getGoldCandles
+      tags: [gold]
+      summary: Get verified XAU/USD candles
+      parameters:
+        - name: interval
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [1m, 5m, 10m, 15m, 30m, 1h, 4h, 1d]
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 30
+            maximum: 500
+            default: 300
+      responses:
+        "200":
+          description: XAU/USD OHLC data from Twelve Data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoldCandlesResponse"
+        "400":
+          description: Invalid query
+        "502":
+          description: Market data source unavailable
+  /gold/macro-calendar:
+    get:
+      operationId: getGoldMacroCalendar
+      tags: [gold]
+      summary: Get official U.S. macro release events
+      responses:
+        "200":
+          description: Important U.S. releases published by the Bureau of Labor Statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GoldMacroCalendarResponse"
+        "502":
+          description: Official release calendar unavailable
 components:
   schemas:
     HealthStatus:
@@ -33,4 +78,74 @@ components:
           type: string
       required:
         - status
+    GoldCandle:
+      type: object
+      properties:
+        time:
+          type: string
+          format: date-time
+        open:
+          type: number
+        high:
+          type: number
+        low:
+          type: number
+        close:
+          type: number
+        volume:
+          type: [number, "null"]
+        complete:
+          type: boolean
+      required: [time, open, high, low, close, volume, complete]
+    GoldCandlesResponse:
+      type: object
+      properties:
+        symbol:
+          type: string
+        source:
+          type: string
+        interval:
+          type: string
+        fetchedAt:
+          type: string
+          format: date-time
+        isStale:
+          type: boolean
+        candles:
+          type: array
+          items:
+            $ref: "#/components/schemas/GoldCandle"
+      required: [symbol, source, interval, fetchedAt, isStale, candles]
+    GoldMacroEvent:
+      type: object
+      properties:
+        title:
+          type: string
+        category:
+          type: string
+        releaseAt:
+          type: string
+          format: date-time
+        sourceUrl:
+          type: string
+          format: uri
+      required: [title, category, releaseAt, sourceUrl]
+    GoldMacroCalendarResponse:
+      type: object
+      properties:
+        source:
+          type: string
+        sourceUrl:
+          type: string
+          format: uri
+        fetchedAt:
+          type: string
+          format: date-time
+        isStale:
+          type: boolean
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/GoldMacroEvent"
+      required: [source, sourceUrl, fetchedAt, isStale, events]
 
