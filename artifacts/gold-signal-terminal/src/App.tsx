@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useGetGoldCandles } from '@workspace/api-client-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -8,9 +9,11 @@ import {
   Activity,
   CalendarDays,
   Clock3,
+  RefreshCw,
   ShieldAlert,
   Sparkles,
 } from 'lucide-react';
+import { buildTechnicalSnapshot } from '@/lib/gold-analysis';
 import {
   Route,
   Switch,
@@ -21,33 +24,30 @@ import {
 const queryClient = new QueryClient();
 
 const intervals = [
-  { label: '1m', value: '1' },
-  { label: '5m', value: '5' },
-  { label: '10m', value: '10' },
-  { label: '15m', value: '15' },
-  { label: '30m', value: '30' },
-  { label: '1h', value: '60' },
-  { label: '4h', value: '240' },
-  { label: '1d', value: 'D' },
-];
+  { label: '1m', value: '1', apiInterval: '1m' },
+  { label: '5m', value: '5', apiInterval: '5m' },
+  { label: '10m', value: '10', apiInterval: '10m' },
+  { label: '15m', value: '15', apiInterval: '15m' },
+  { label: '30m', value: '30', apiInterval: '30m' },
+  { label: '1h', value: '60', apiInterval: '1h' },
+  { label: '4h', value: '240', apiInterval: '4h' },
+  { label: '1d', value: 'D', apiInterval: '1d' },
+] as const;
 
-const factors = [
-  'Market structure · HH / HL, LH / LL',
-  'Support & resistance',
-  'Liquidity sweeps / stop hunts',
-  'Order blocks · supply / demand',
-  'Fair value gaps',
-  'BOS / CHoCH',
-  'Inducement',
-  'Premium / discount',
-  'Trendlines / channels',
-  'Rejection · engulfing · inside bar',
-  'Asian / London / New York highs & lows',
-  'Opening range',
-  'Wyckoff phases',
-  'Fakeouts',
-  'Mitigation / retest entries',
-];
+function formatPrice(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatUtc(value: Date) {
+  return new Intl.DateTimeFormat('en', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'UTC',
+  }).format(value);
+}
 
 function TradingViewChart({ interval }: { interval: string }) {
   const widgetRef = useRef<HTMLDivElement>(null);
@@ -136,6 +136,18 @@ function EconomicCalendar() {
 function Home() {
   const [interval, setInterval] = useState('15');
   const [showPredictions, setShowPredictions] = useState(false);
+  const activeInterval = intervals.find((item) => item.value === interval) ?? intervals[3];
+  const predictionsQuery = useGetGoldCandles(
+    { interval: activeInterval.apiInterval, limit: 150 },
+    { query: { enabled: false, retry: 0, staleTime: 30_000 } },
+  );
+  const snapshot = predictionsQuery.data
+    ? buildTechnicalSnapshot(predictionsQuery.data.candles)
+    : null;
+
+  useEffect(() => {
+    if (showPredictions) void predictionsQuery.refetch();
+  }, [showPredictions, activeInterval.apiInterval]);
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
@@ -182,13 +194,13 @@ function Home() {
             onClick={() => setShowPredictions((value) => !value)}
           >
             <Sparkles aria-hidden="true" />
-            {showPredictions ? 'Close predictions' : 'Predictions'}
+            {showPredictions ? 'Close predictions' : 'Run predictions'}
           </button>
         </div>
       </section>
       <div className="notice" role="note" data-testid="notice-data-limitation">
         <ShieldAlert aria-hidden="true" />
-        <div><strong>Analysis data not connected.</strong> TradingView embeds are for visual reference only; their data is not available to Aurum for programmatic analysis. Predictions will remain unavailable until a verified candle feed and event/news data source are connected.</div>
+        <div><strong>Analysis uses a separate verified feed.</strong> TradingView embeds are visual references only; the technical review loads XAU/USD candles directly from the configured server-side market data source.</div>
       </div>
 
       <div className="workspace">
@@ -241,25 +253,84 @@ function Home() {
             <div className="prediction-title">
               <div className="gold-glyph" aria-hidden="true"><Activity size={17} /></div>
               <div>
-                <h2 id="predictions-title">XAU/USD technical review</h2>
-                <p>Requested factors · evaluated only with verified machine-readable data</p>
+                <h2 id="predictions-title">XAU/USD technical outlook</h2>
+                <p>{activeInterval.label} timeframe · verified completed candles only</p>
               </div>
             </div>
-            <span className="unavailable-badge" data-testid="status-predictions-unavailable">NO SIGNAL / UNAVAILABLE</span>
+            <div className="prediction-head-actions">
+              <span className={`unavailable-badge${snapshot ? ' available-badge' : ''}`} data-testid="status-predictions">
+                {predictionsQuery.isFetching ? 'LOADING DATA' : predictionsQuery.isError ? 'UPDATE FAILED' : snapshot ? (predictionsQuery.data?.isStale ? 'STALE DATA' : 'DATA READY') : predictionsQuery.data ? 'INSUFFICIENT DATA' : 'WAITING'}
+              </span>
+              <button
+                type="button"
+                className="refresh-button"
+                onClick={() => void predictionsQuery.refetch()}
+                disabled={predictionsQuery.isFetching}
+                aria-label="Refresh technical analysis"
+                data-testid="button-refresh-predictions"
+              >
+                <RefreshCw aria-hidden="true" className={predictionsQuery.isFetching ? 'spinning' : ''} />
+                <span>Refresh</span>
+              </button>
+            </div>
           </div>
           <div className="prediction-content">
-            <div className="no-signal" role="status" data-testid="text-no-signal">
-              <strong>No analysis has run.</strong> Aurum has no connected programmatic XAU/USD candle feed or CPI/news API. The embedded TradingView chart and calendar do not expose their data to this evaluation. This is a source limitation, not a market signal.
-            </div>
-            <div className="factor-heading"><span>Review checklist</span><span className="mono">15 FACTORS · NOT EVALUATED</span></div>
-            <div className="factor-grid">
-              {factors.map((factor, index) => (
-                <div className="factor" key={factor} data-testid={`factor-not-evaluated-${index + 1}`}>
-                  <span>{factor}</span><span>NOT EVALUATED</span>
+            {predictionsQuery.isFetching && !predictionsQuery.data && (
+              <div className="no-signal" role="status" data-testid="text-predictions-loading">
+                <strong>Loading verified candles.</strong> The technical snapshot will appear when enough completed data is available.
+              </div>
+            )}
+            {predictionsQuery.isError && (
+              <div className="no-signal error-signal" role="alert" data-testid="text-predictions-error">
+                <strong>Analysis is unavailable.</strong>{' '}
+                {(predictionsQuery.error as { status?: number })?.status === 503
+                  ? "Add TWELVE_DATA_API_KEY to the server's Replit Secrets, then retry."
+                  : 'The verified candle feed could not be loaded. Check the server data source and retry.'}
+              </div>
+            )}
+            {snapshot && predictionsQuery.data && (
+              <>
+                {predictionsQuery.data.isStale && (
+                  <div className="no-signal stale-signal" role="status" data-testid="text-predictions-stale">
+                    <strong>Latest candle data may be stale.</strong> Treat this snapshot as historical context only.
+                  </div>
+                )}
+                <div className={`outlook-card outlook-${snapshot.bias === 'Bullish alignment' ? 'bullish' : snapshot.bias === 'Bearish alignment' ? 'bearish' : 'mixed'}`} data-testid="prediction-outlook">
+                  <div>
+                    <span className="outlook-label">Rule-based technical alignment</span>
+                    <strong>{snapshot.bias}</strong>
+                  </div>
+                  <span className="outlook-interval mono">{activeInterval.label.toUpperCase()}</span>
                 </div>
-              ))}
-            </div>
-            <p className="disclaimer">No direction, entry, stop, target, event assessment, or confidence estimate is provided. Connect a verified data source before relying on automated technical or event-risk analysis.</p>
+                <div className="analysis-metrics">
+                  <div className="analysis-metric">
+                    <span>Last close</span><strong>${formatPrice(snapshot.close)}</strong>
+                  </div>
+                  <div className="analysis-metric">
+                    <span>20-candle average</span><strong>${formatPrice(snapshot.sma20)}</strong>
+                  </div>
+                  <div className="analysis-metric">
+                    <span>50-candle average</span><strong>${formatPrice(snapshot.sma50)}</strong>
+                  </div>
+                  <div className="analysis-metric">
+                    <span>RSI · 14</span><strong>{snapshot.rsi14.toFixed(1)}</strong>
+                  </div>
+                  <div className="analysis-metric">
+                    <span>Previous candle</span><strong className={snapshot.changePercent >= 0 ? 'metric-positive' : 'metric-negative'}>{snapshot.changePercent >= 0 ? '+' : ''}{snapshot.changePercent.toFixed(2)}%</strong>
+                  </div>
+                  <div className="analysis-metric">
+                    <span>Completed candles</span><strong>{snapshot.candleCount}</strong>
+                  </div>
+                </div>
+                <div className="factor-heading"><span>Data source</span><span className="mono">{predictionsQuery.data.source.toUpperCase()} · {formatUtc(snapshot.asOf)} UTC</span></div>
+              </>
+            )}
+            {!predictionsQuery.isFetching && !predictionsQuery.isError && !snapshot && (
+              <div className="no-signal" role="status" data-testid="text-no-signal">
+                <strong>Not enough completed candles yet.</strong> At least 50 are needed to calculate this technical snapshot. Refresh after the market data feed is available.
+              </div>
+            )}
+            <p className="disclaimer">This is a rule-based technical snapshot of recent candles, not a price forecast or trading recommendation. It provides no entry, stop, target, probability, or CPI/news assessment.</p>
           </div>
         </section>
       )}
